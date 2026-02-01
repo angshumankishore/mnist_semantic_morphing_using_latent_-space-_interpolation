@@ -45,26 +45,7 @@ class VAE(nn.Module):
         return self.decode(z), mu, logvar
 
 
-def load_user_image(path_or_digit):
-    """
-    Accepts:
-    - path to image OR
-    - single digit character ('0'–'9')
-    """
-
-    # if digit, load from fixed directory
-    if len(path_or_digit) == 1 and path_or_digit.isdigit():
-        path = f"digits/{path_or_digit}.png"
-    else:
-        path = path_or_digit
-
-    img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-    if img is None:
-        raise ValueError("Invalid image path")
-
-    img = 255 - img
-    img = cv2.resize(img, (28, 28))
-    img = img.astype(np.float32) / 255.0
-
-    img = torch.tensor(img).unsqueeze(0).unsqueeze(0)
-    return img.to(DEVICE)
+# NOTE: image loading and preprocessing utilities have been moved to
+# `image_utils.py` to keep the model code focused on architecture and
+# inference. See `image_utils.py` for helpers that produce tensors
+# ready to be passed into the VAE.

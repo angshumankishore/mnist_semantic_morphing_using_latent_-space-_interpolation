@@ -3,7 +3,8 @@ import torch
 import cv2
 import numpy as np
 import os
-from vae_model import VAE, load_user_image
+from vae_model import VAE
+from image_utils import load_user_image, load_images_from_file_list
 
 # =============================
 # CONFIG
@@ -89,35 +90,86 @@ def stitch_videos(video_paths, final_path):
 st.title("🔢 MNIST Latent Space Morphing (VAE)")
 
 st.markdown("""
-Enter **multi-digit numbers only**  
-Examples: `19 → 33`, `248 → 572`
+Two input modes supported:
+
+- Text numbers: type multi-digit numbers (e.g. `12`) where each character is a digit image.
+- Upload images: upload one image per side (each image may contain multiple digits side-by-side) or multiple single-digit images. The app will try to split combined images automatically.
 """)
 
-src = st.text_input("Source Number")
-tgt = st.text_input("Target Number")
+mode = st.radio("Input mode", ["Text numbers", "Upload images"])
 
-if st.button("Generate Morphing Video"):
-    if not is_valid_number_string(src) or not is_valid_number_string(tgt):
-        st.error("❌ Invalid input. Use multi-digit, non-repeating numbers only.")
-        st.stop()
+src_digits = []
+tgt_digits = []
 
-    if len(src) != len(tgt):
-        st.error("❌ Source and target must have the same length.")
-        st.stop()
+if mode == "Text numbers":
+    src = st.text_input("Source Number (e.g. 12)")
+    tgt = st.text_input("Target Number (e.g. 34)")
 
-    video_segments = []
+    if st.button("Generate Morphing Video"):
+        if not is_valid_number_string(src) or not is_valid_number_string(tgt):
+            st.error("❌ Invalid input. Use multi-digit, non-repeating numbers only.")
+            st.stop()
 
-    with st.spinner("Generating morphs..."):
-        for i, (s, t) in enumerate(zip(src, tgt)):
-            img1 = load_user_image(s)
-            img2 = load_user_image(t)
+        if len(src) != len(tgt):
+            st.error("❌ Source and target must have the same length.")
+            st.stop()
 
-            temp_video = os.path.join(TEMP_DIR, f"segment_{i}.avi")
-            morph_digits(img1, img2, temp_video)
-            video_segments.append(temp_video)
+        for s, t in zip(src, tgt):
+            # load_user_image when given a single-character digit returns a list
+            # with one tensor; extract the first element
+            imgs1 = load_user_image(s)
+            imgs2 = load_user_image(t)
+            src_digits.append(imgs1[0])
+            tgt_digits.append(imgs2[0])
 
-        final_video = os.path.join(VIDEO_DIR, "final_morph.avi")
-        stitch_videos(video_segments, final_video)
+        video_segments = []
+        with st.spinner("Generating morphs..."):
+            for i, (img1, img2) in enumerate(zip(src_digits, tgt_digits)):
+                temp_video = os.path.join(TEMP_DIR, f"segment_{i}.avi")
+                morph_digits(img1, img2, temp_video)
+                video_segments.append(temp_video)
 
-    st.success("✅ Video generated!")
-    st.video(final_video)
+            final_video = os.path.join(VIDEO_DIR, "final_morph.avi")
+            stitch_videos(video_segments, final_video)
+
+        st.success("✅ Video generated!")
+        st.video(final_video)
+
+else:
+    st.markdown("Upload one or more files for Source and Target. If you upload a single image containing multiple digits (e.g. '12'), the app will try to split it into individual digits.")
+    src_files = st.file_uploader("Source image(s) — upload one image containing multiple digits or multiple single-digit images", accept_multiple_files=True, type=["png","jpg","jpeg"] )
+    tgt_files = st.file_uploader("Target image(s)", accept_multiple_files=True, type=["png","jpg","jpeg"] )
+
+    if st.button("Generate Morphing Video"):
+        if not src_files or not tgt_files:
+            st.error("❌ Please upload source and target images.")
+            st.stop()
+
+        # flatten files into list of tensors (keeps order)
+        try:
+            src_digits = load_images_from_file_list(src_files)
+            tgt_digits = load_images_from_file_list(tgt_files)
+        except Exception as e:
+            st.error(f"Error loading images: {e}")
+            st.stop()
+
+        if len(src_digits) < 2 or len(tgt_digits) < 2:
+            st.error("❌ Need at least two digits per side (multi-digit numbers).")
+            st.stop()
+
+        if len(src_digits) != len(tgt_digits):
+            st.error("❌ Source and target must have the same number of digits.")
+            st.stop()
+
+        video_segments = []
+        with st.spinner("Generating morphs..."):
+            for i, (img1, img2) in enumerate(zip(src_digits, tgt_digits)):
+                temp_video = os.path.join(TEMP_DIR, f"segment_{i}.avi")
+                morph_digits(img1, img2, temp_video)
+                video_segments.append(temp_video)
+
+            final_video = os.path.join(VIDEO_DIR, "final_morph.avi")
+            stitch_videos(video_segments, final_video)
+
+        st.success("✅ Video generated!")
+        st.video(final_video)

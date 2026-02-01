@@ -58,7 +58,63 @@ Python
 PyTorch – deep learning framework
 Torchvision – MNIST dataset handling
 NumPy – numerical operations
-OpenCV – video generation
+```markdown
+# MNIST Semantic Morphing (VAE)
 
+This project demonstrates semantic morphing of handwritten digits using a Variational Autoencoder (VAE) trained on MNIST.
 
-In the end i have also attached the example video of converting 9 ->3
+Quick start
+
+1. Create a virtual environment and install dependencies:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+2. Run the Streamlit app:
+
+```bash
+streamlit run streamlit_app.py
+```
+
+Usage
+
+- Mode: "Text numbers" — type multi-digit numbers like `12` as Source and `34` as Target.
+- Mode: "Upload images" — upload one image per side. Each image may contain multiple digits side-by-side (e.g., a single image showing `12`). The app will try to auto-split the uploaded images into individual digits.
+
+Description
+
+Given any two handwritten digits from the MNIST test dataset (for example 3 → 8), the model generates a smooth transformation video by interpolating between their latent representations. The transformation is performed in latent space, not pixel space, which results in meaningful and visually smooth transitions.
+
+What is a VAE?
+
+A Variational Autoencoder (VAE) is a type of generative deep learning model used to learn a compact and continuous representation of data. A VAE consists of two main parts:
+
+- Encoder : Takes an input image and compresses it into a latent representation. Outputs two vectors: mean (μ) and log variance (log σ²).
+- Decoder: Takes a sampled latent vector and reconstructs the original image.
+
+Latent Space Interpolation (Core Idea)
+
+After encoding two digits into latent vectors z₁ and z₂, intermediate latent vectors are generated using linear interpolation:
+
+z(α) = (1 − α) · z₁ + α · z₂
+
+Each interpolated latent vector is decoded back into an image, producing a smooth transition between digits.
+
+How OpenCV is used
+
+OpenCV converts generated images into frames, resizes frames for visibility, and writes frames sequentially into a video file (`.avi`).
+
+Key Technologies
+
+- Python
+- PyTorch
+- NumPy
+- OpenCV
+- Streamlit
+
+If you'd like me to refactor the project into a proper package layout, add unit tests, or tune the splitting using a small classifier, tell me and I will continue.
+
+```
